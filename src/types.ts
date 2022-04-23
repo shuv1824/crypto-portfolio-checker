@@ -7,3 +7,7 @@ export type Transaction = {
   token: string;
   amount: number;
 };
+
+export interface Portfolio {
+  [key: string]: number
+};

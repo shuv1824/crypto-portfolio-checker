@@ -1,9 +1,12 @@
 #! /usr/bin/node
 
 import { createReadStream } from "fs";
-import { parse } from 'csv-parse';
+// import { parse as csv_parse } from 'csv-parse';
+import { parse, NODE_STREAM_INPUT } from 'papaparse';
 import { Command } from 'commander';
-import { Transaction } from './types/transaction';
+import { Transaction, Portfolio } from './types';
+
+// import { api_key } from './utils'
 
 const program = new Command();
 
@@ -17,34 +20,45 @@ program.parse();
 const [file] = program.args;
 const options = program.opts();
 
-interface Portfolio {
-    [key: string]: number
-}
+
+/**
+ * Below is the parser of `csv-parse` library which is not able to parse very large CSV files.
+ */
+
+// const headers = ['timestamp', 'transaction_type', 'token', 'amount'];
+// const csv_parser = csv_parse({
+//     delimiter: ',',
+//     encoding: 'utf-8',
+//     from_line: 2,
+//     columns: headers,
+//     cast: (columnValue, context) => {
+//         if (context.column === 'timestamp') {
+//             return parseInt(columnValue);
+//         }
+
+//         if (context.column === 'amount') {
+//             return parseFloat(columnValue);
+//         }
+    
+//         return columnValue;
+//     }
+// }, (error, result: Transaction[]) => {
+//     if (error) {
+//         console.error(error);
+//     }
+// });
 
 const portfolio:Portfolio = {}
 
-const headers = ['timestamp', 'transaction_type', 'token', 'amount'];
-
-const parser = parse({
-    delimiter: ',',
-    encoding: 'utf-8',
-    from_line: 2,
-    columns: headers,
-    cast: (columnValue, context) => {
-        if (context.column === 'timestamp') {
-            return parseInt(columnValue);
-        }
-
-        if (context.column === 'amount') {
-            return parseFloat(columnValue);
-        }
-    
-        return columnValue;
-    }
-}, (error, result: Transaction[]) => {
-    if (error) {
-        console.error(error);
-    }
+/**
+ * Below is the parser of `papaparse` CSV parser library. 
+ * It can handle very large files and is very fast.
+ */
+const parser = parse(NODE_STREAM_INPUT, {
+    delimiter: ",",
+    header: true,
+    dynamicTyping: true,
+    fastMode: true,
 });
 
 const readableStream = createReadStream(file).pipe(parser);
