@@ -12,7 +12,7 @@ export interface Portfolio {
   [key: string]: number
 };
 
-export interface ConsoleOut {
+export interface ConsoleResult {
   token: string,
   value: number
 }
@@ -21,4 +21,9 @@ export interface ExchangeRate {
   [key: string]: {
     [key: string]: number
   }
+}
+
+export interface TimeRange {
+  start: number,
+  end: number
 }

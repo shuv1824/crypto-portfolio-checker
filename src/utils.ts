@@ -1,6 +1,7 @@
 import path from 'path';
 import dotenv from "dotenv";
 import axios from 'axios';
+import moment from 'moment';
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
@@ -27,4 +28,19 @@ export function get_exchange_rates(fsyms: string[], tsyms: string[]) {
         .then(res => resolve(res.data))
         .catch(error => reject(error));
     });
+}
+
+/**
+ * This function takes date string in `dd/mm/yyyy` format and 
+ * returns the starting unix time of that date as `start` and
+ * the starting unix time of the next date as `end` 
+ * 
+ * @param date: string
+ * @returns Object<start:number, end:number>
+ */
+export function get_epoch_time_from_date(date: string) {
+    const search_date = moment(date.split("/").reverse().join("-")).utc();
+    const next_date = search_date.clone().add(1, 'days');
+
+    return {start: search_date.unix(), end: next_date.unix()};
 }

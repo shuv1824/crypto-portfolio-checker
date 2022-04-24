@@ -4,21 +4,36 @@ import { createReadStream } from "fs";
 // import { parse as csv_parse } from 'csv-parse';
 import { parse, NODE_STREAM_INPUT } from 'papaparse';
 import { Command } from 'commander';
-import { Transaction, Portfolio, ExchangeRate, ConsoleOut } from './types';
-import { get_exchange_rates } from './utils';
+import { Transaction, Portfolio, ExchangeRate, ConsoleResult, TimeRange } from './types';
+import { get_exchange_rates, get_epoch_time_from_date } from './utils';
 
 const program = new Command();
 
 program
     .argument('<file>', 'Path of the CSV file with crypto investment transaction data.')
     .option('-t, --token <type>', 'The token for which latest portfolio will be given.')
-    .option('-d, --date <type>', 'The date on which portfolio for each token will be given.');
+    .option('-d, --date <type>', 'The date (dd/mm/yyyy) on which portfolio for each token will be given.');
 
 program.parse();
 
 const [file] = program.args;
 const options = program.opts();
 
+let transaction_count = 0;
+let matched_transaction_count = 0;
+let time_range:TimeRange;
+
+const portfolio:Portfolio = {};
+const OUTPUT_CURRENCY = "USD";
+
+if(options.date) {
+    try {
+        time_range = get_epoch_time_from_date(options.date);
+        console.log(time_range);
+    } catch (error) {
+        console.error("ERROR: Invalid date format! Please enter a valid date format");
+    }
+}
 
 /**
  * Below is the parser of `csv-parse` library which is not able to parse very large CSV files.
@@ -47,9 +62,6 @@ const options = program.opts();
 //     }
 // });
 
-const portfolio:Portfolio = {};
-const OUTPUT_CURRENCY = "USD";
-
 /**
  * Below is the parser of `papaparse` CSV parser library. 
  * It can handle very large files and is very fast.
@@ -70,21 +82,25 @@ readableStream.on('error', function (error) {
 })
 
 readableStream.on('data', (transaction: Transaction) => {
+    let will_add = true;
     let amount = transaction.amount;
+    transaction_count++;
 
     if(transaction.transaction_type === "WITHDRAWAL") {
         amount = -amount;
     }
 
+    if(options.date) {
+        if(transaction.timestamp < time_range.start || transaction.timestamp >= time_range.end) will_add = false;
+    }
+
     if(options.token) {
-        if(options.token === transaction.token) {
-            if(portfolio[transaction.token]) {
-                portfolio[transaction.token] = portfolio[transaction.token] + amount;
-            } else {
-                portfolio[transaction.token] = amount;
-            }
-        }
-    } else {
+        if(options.token !== transaction.token) will_add = false;
+    }
+
+    if(will_add) {
+        matched_transaction_count++;
+
         if(portfolio[transaction.token]) {
             portfolio[transaction.token] = portfolio[transaction.token] + amount;
         } else {
@@ -94,7 +110,7 @@ readableStream.on('data', (transaction: Transaction) => {
 });
 
 readableStream.on('end', () => {
-    const output: ConsoleOut[] = [];
+    const output: ConsoleResult[] = [];
     if(portfolio && Object.keys(portfolio).length !== 0) {
         get_exchange_rates(Object.keys(portfolio), [OUTPUT_CURRENCY])
         .then( res => {
@@ -109,8 +125,15 @@ readableStream.on('end', () => {
                 )
             }
         })
-        .then( () => console.table(output));
+        .then( () => {
+            console.table(output);
+            console.log(`Matched ${matched_transaction_count} from ${transaction_count} transactions.`)
+        })
+        .catch( err => {
+            console.error("ERROR: Unable to connect to remote API server. Please check your network connection.");
+        });
     } else {
-        console.log("Sorry! No token found. Please try with a different token.")
+        console.log(`Searched ${transaction_count} transactions.`)
+        console.log("Sorry! No match found. Please try with a different token and/or date.");
     }
 });
