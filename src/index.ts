@@ -4,9 +4,8 @@ import { createReadStream } from "fs";
 // import { parse as csv_parse } from 'csv-parse';
 import { parse, NODE_STREAM_INPUT } from 'papaparse';
 import { Command } from 'commander';
-import { Transaction, Portfolio } from './types';
-
-// import { api_key } from './utils'
+import { Transaction, Portfolio, ExchangeRate, ConsoleOut } from './types';
+import { get_exchange_rates } from './utils';
 
 const program = new Command();
 
@@ -48,7 +47,8 @@ const options = program.opts();
 //     }
 // });
 
-const portfolio:Portfolio = {}
+const portfolio:Portfolio = {};
+const OUTPUT_CURRENCY = "USD";
 
 /**
  * Below is the parser of `papaparse` CSV parser library. 
@@ -62,6 +62,8 @@ const parser = parse(NODE_STREAM_INPUT, {
 });
 
 const readableStream = createReadStream(file).pipe(parser);
+
+console.log(`Fetching your portfolio value in ${OUTPUT_CURRENCY}. Please wait...`);
 
 readableStream.on('error', function (error) {
     console.log(`error: ${error.message}`);
@@ -92,5 +94,23 @@ readableStream.on('data', (transaction: Transaction) => {
 });
 
 readableStream.on('end', () => {
-    console.log(portfolio);
+    const output: ConsoleOut[] = [];
+    if(portfolio && Object.keys(portfolio).length !== 0) {
+        get_exchange_rates(Object.keys(portfolio), [OUTPUT_CURRENCY])
+        .then( res => {
+            const rates = res as ExchangeRate;
+            
+            for (const [token, value] of Object.entries(portfolio)) {
+                output.push(
+                    {
+                        token: token,
+                        value: value * rates[token][OUTPUT_CURRENCY]
+                    }
+                )
+            }
+        })
+        .then( () => console.table(output));
+    } else {
+        console.log("Sorry! No token found. Please try with a different token.")
+    }
 });

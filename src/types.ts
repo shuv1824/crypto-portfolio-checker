@@ -11,3 +11,14 @@ export type Transaction = {
 export interface Portfolio {
   [key: string]: number
 };
+
+export interface ConsoleOut {
+  token: string,
+  value: number
+}
+
+export interface ExchangeRate {
+  [key: string]: {
+    [key: string]: number
+  }
+}
