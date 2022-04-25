@@ -50,3 +50,28 @@ $ crypto-checker ~/transactions.csv --token BTC --date 20/10/2019
 ```
 ![Sample Output](./sample_output2.png)
 
+## Solution Design
+### Challege
+The CLI tool is a simple application that reads from a CSV file and calulates the 
+output based on some options or filters. But the main challenge of designing the 
+solution is the size of the input CSV file. For a small or medium sized file the 
+application can load the full file into memory and work with that. But for a large 
+file it is not possible to load the full file into memory. 
+
+### Solution Approach
+To solve this challenge the `StreamReader` of `fs` module of `Node` has been used 
+to stream the file per row. 
+
+Still the application was not able to parse the large file with `csv-parse` and 
+`csv-parser` packages. Then the [papaparse](https://www.papaparse.com/) package 
+has been used to stream and parse the large CSV file and aggregate the values in 
+an object. After the full file has been processed only a small object is returned 
+to do further calculations. 
+
+### Minimal External API Calls
+To get the exchange rates of the crypto currencies the CrtyptoCompare API has been 
+used. But the API is called only once per execution of the script. Also the API key 
+is taken from `.env` file to keep the key safe from version control system.
+
+Though the large file takes relatively long time to process the application does 
+not crash or fail to parse the file if it has the proper format and data. 

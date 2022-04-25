@@ -13,7 +13,6 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
  * @param tsyms string[]: Array of the conversion currencies
  * @returns Promise
  */
-
 export function get_exchange_rates(fsyms: string[], tsyms: string[]) {
     const api_key = process.env.CRYPTOCOMPARE_API_KEY;
     const api_base_url = 'https://min-api.cryptocompare.com/data/pricemulti';
@@ -42,10 +41,9 @@ export function get_epoch_time_from_date(date: string) {
     try {
         const search_date = moment(date.split("/").reverse().join("-")).utc();
         const next_date = search_date.clone().add(1, 'days');
-
         return {start: search_date.unix(), end: next_date.unix()};
     } catch (error) {
-        throw new Error("Invalid date format! Please enter a valid date format");
         console.error("ERROR: Invalid date format! Please enter a valid date format");
+        throw new Error("Invalid date format! Please enter a valid date format");
     } 
 }
