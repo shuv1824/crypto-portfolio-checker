@@ -7,12 +7,14 @@ import { Command } from 'commander';
 import { Transaction, Portfolio, ExchangeRate, ConsoleResult, TimeRange } from './types';
 import { get_exchange_rates, get_epoch_time_from_date } from './utils';
 
+const execution_start = process.hrtime();
+
 const program = new Command();
 
 program
     .argument('<file>', 'Path of the CSV file with crypto investment transaction data.')
-    .option('-t, --token <type>', 'The token for which latest portfolio will be given.')
-    .option('-d, --date <type>', 'The date (dd/mm/yyyy) on which portfolio for each token will be given.');
+    .option('-t, --token <value>', 'The token for which latest portfolio will be given.')
+    .option('-d, --date <value>', 'The date (dd/mm/yyyy or yyyy-mm-dd) on which portfolio for each token will be given.');
 
 program.parse();
 
@@ -27,12 +29,7 @@ const portfolio:Portfolio = {};
 const OUTPUT_CURRENCY = "USD";
 
 if(options.date) {
-    try {
-        time_range = get_epoch_time_from_date(options.date);
-        console.log(time_range);
-    } catch (error) {
-        console.error("ERROR: Invalid date format! Please enter a valid date format");
-    }
+    time_range = get_epoch_time_from_date(options.date);
 }
 
 /**
@@ -95,7 +92,8 @@ readableStream.on('data', (transaction: Transaction) => {
     }
 
     if(options.token) {
-        if(options.token !== transaction.token) will_add = false;
+        let token:string = options.token;
+        if(token.toUpperCase() !== transaction.token) will_add = false;
     }
 
     if(will_add) {
@@ -127,7 +125,9 @@ readableStream.on('end', () => {
         })
         .then( () => {
             console.table(output);
-            console.log(`Matched ${matched_transaction_count} from ${transaction_count} transactions.`)
+            console.log(`Matched ${matched_transaction_count} from ${transaction_count} transactions.`); 
+            const execution_end = process.hrtime(execution_start);
+            console.log(`Took ${(execution_end[0] * 1e9 + execution_end[1])/1e9} seconds`);
         })
         .catch( err => {
             console.error("ERROR: Unable to connect to remote API server. Please check your network connection.");
